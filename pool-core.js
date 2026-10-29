@@ -32,6 +32,7 @@ function startPool(opts) {
   const getKeys = opts.getKeys || (() => []);
   const getMeta = opts.getMeta || (() => ({}));
   const onEvent = opts.onEvent || (() => {});
+  const ADMIN = opts.admin || null; // { token:()=>string, html, api:{status,memberAdd,memberRenew,memberDelete} }
 
   const log = (...a) => {
     const line = a.map((x) => (typeof x === "string" ? x : JSON.stringify(x))).join(" ");
@@ -211,6 +212,33 @@ function startPool(opts) {
       if (req.method === "GET" && url === "/pool/status") {
         return send(res, 200, publicStatus());
       }
+
+      // ---- remote admin panel (separate admin token) ----
+      if (ADMIN && url === "/admin") {
+        const html = ADMIN.html || "<h3>Admin page not bundled</h3>";
+        res.writeHead(200, { "Content-Type": "text/html; charset=utf-8", "Content-Length": Buffer.byteLength(html) });
+        return res.end(html);
+      }
+      if (ADMIN && url.startsWith("/admin/api/")) {
+        const tok = (req.headers["x-admin-token"] || "").toString();
+        const want = (typeof ADMIN.token === "function" ? ADMIN.token() : ADMIN.token) || "";
+        if (!want || tok !== want) return send(res, 401, { ok: false, error: "bad admin token" });
+        if (req.method === "GET" && url === "/admin/api/status") return send(res, 200, { ok: true, ...ADMIN.api.status() });
+        if (req.method === "POST" && url === "/admin/api/member") {
+          const b = await body(req);
+          return send(res, 200, { ok: true, member: ADMIN.api.memberAdd(b.name) });
+        }
+        if (req.method === "POST" && url === "/admin/api/member/renew") {
+          const b = await body(req);
+          return send(res, 200, { ok: true, member: ADMIN.api.memberRenew(String(b.id || "")) });
+        }
+        if (req.method === "POST" && url === "/admin/api/member/delete") {
+          const b = await body(req);
+          return send(res, 200, { ok: true, ...ADMIN.api.memberDelete(String(b.id || "")) });
+        }
+        return send(res, 404, { ok: false, error: "not found" });
+      }
+
       if (!authed(req)) return send(res, 401, { ok: false, error: "bad api key" });
       if (req.method === "POST" && url === "/lease") {
         const b = await body(req);

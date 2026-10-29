@@ -85,3 +85,8 @@ input:focus { border-color: var(--accent); }
 .toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: #1b2740; border: 1px solid var(--line); color: var(--txt); padding: 10px 18px; border-radius: 10px; opacity: 0; transition: opacity .25s; pointer-events: none; }
 .toast.show { opacity: 1; }
 .rowact { display: flex; gap: 6px; }
+.sub { color: var(--muted); font-size: 12px; }
+.sub.dim { opacity: .6; }
+.adminbox { background: var(--panel2); border: 1px solid var(--line); border-radius: 8px; padding: 12px; margin-top: 6px; }
+.adminbox .row2 { display: flex; gap: 8px; align-items: center; margin-top: 6px; }
+.adminbox code { background: var(--panel); padding: 4px 8px; border-radius: 6px; user-select: text; }

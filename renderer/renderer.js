@@ -30,9 +30,11 @@ document.querySelectorAll(".tab").forEach((t) => {
 
 // ---- dashboard status ----
 let running = false;
+let lastTunnelUrl = "";
 async function refreshStatus() {
   const s = await api.status();
   running = s.poolRunning;
+  lastTunnelUrl = s.tunnelUrl || "";
   $("poolDot").className = "dot " + (running ? "on" : "off");
   $("poolText").textContent = running ? "running on :" + s.port : "stopped";
   $("togglePool").textContent = running ? "Stop" : "Start";
@@ -114,7 +116,7 @@ async function loadProfiles() {
     const busy = p.state === "busy" || p.state === "leased";
     const tr = document.createElement("tr");
     tr.innerHTML = `
-      <td><b>${p.name}</b></td>
+      <td><b>${p.name}</b>${p.email ? `<br><span class="sub">${p.email}</span>` : `<br><span class="sub dim">(email unknown — Check)</span>`}</td>
       <td>${p.service}</td>
       <td>${badge(p.lastStatus, p.state)}</td>
       <td>${busy ? p.state : "—"}</td>
@@ -236,7 +238,12 @@ async function loadSettings() {
   $("sWorkerEnabled").checked = !!w.enabled;
   $("sWorkerUrl").value = w.url || "";
   $("sWorkerToken").value = w.token || "";
+  $("adminTok").textContent = s.adminToken || "–";
+  $("adminUrl").value = lastTunnelUrl ? lastTunnelUrl + "/admin" : "(tunnel starting… — Dashboard dekho)";
 }
+$("copyAdminUrl").onclick = () => { const v = $("adminUrl").value; if (v && v.startsWith("http")) { navigator.clipboard.writeText(v); toast("admin URL copied"); } };
+$("openAdminUrl").onclick = () => { const v = $("adminUrl").value; if (v && v.startsWith("http")) api.openExternal(v); };
+$("copyAdminTok").onclick = () => { const v = $("adminTok").textContent; if (v && v !== "–") { navigator.clipboard.writeText(v); toast("token copied"); } };
 $("saveSettings").onclick = async () => {
   const patch = {
     port: Number($("sPort").value) || 8787,

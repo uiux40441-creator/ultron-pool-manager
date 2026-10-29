@@ -97,6 +97,29 @@ function serviceCfg(service, museUrl) {
   };
 }
 
+// Read the signed-in Google account email from a Gemini page (best-effort).
+async function extractEmail(page) {
+  try {
+    return await page.evaluate(() => {
+      const rx = /[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}/i;
+      // 1) the account switcher button usually has it in aria-label / alt
+      for (const sel of ['a[aria-label*="@"]', '[aria-label*="Account"]', 'img[alt*="@"]', 'a[href*="accounts.google.com/SignOutOptions"]']) {
+        const el = document.querySelector(sel);
+        if (el) {
+          const t = (el.getAttribute("aria-label") || el.getAttribute("alt") || el.textContent || "");
+          const m = t.match(rx);
+          if (m) return m[0];
+        }
+      }
+      // 2) fallback: scan the DOM text
+      const m2 = (document.body.innerText || "").match(rx);
+      return m2 ? m2[0] : "";
+    });
+  } catch {
+    return "";
+  }
+}
+
 // Open a visible Chrome for the user to sign in; resolves when they close it.
 // onState(status) is called with "logged_in" once the session looks good.
 async function interactiveLogin({ dir, service, museUrl, onState }) {
@@ -105,10 +128,12 @@ async function interactiveLogin({ dir, service, museUrl, onState }) {
   const page = ctx.pages()[0] || (await ctx.newPage());
   await page.goto(cfg.url, { waitUntil: "domcontentloaded", timeout: 90000 }).catch(() => {});
   let marked = false;
+  let email = "";
   const timer = setInterval(async () => {
     try {
       if (!marked && (await cfg.loggedIn(page))) {
         marked = true;
+        if (service !== "muse") email = await extractEmail(page);
         onState && onState("logged_in");
       }
     } catch {}
@@ -122,9 +147,10 @@ async function interactiveLogin({ dir, service, museUrl, onState }) {
   clearInterval(guard);
   let finalOk = marked;
   try {
-    finalOk = marked || (await cfg.loggedIn(page).catch(() => false));
+    if (!finalOk) finalOk = await cfg.loggedIn(page).catch(() => false);
+    if (finalOk && !email && service !== "muse") email = await extractEmail(page).catch(() => "");
   } catch {}
-  return { ok: true, loggedIn: finalOk };
+  return { ok: true, loggedIn: finalOk, email };
 }
 
 // Headless probe: is this profile still signed in? (~a few seconds)
@@ -150,7 +176,9 @@ async function checkLoggedIn({ dir, service, museUrl, proxy }) {
       : cfg.url, { waitUntil: "domcontentloaded", timeout: 45000 }).catch(() => {});
     await page.waitForTimeout(2500);
     const li = await cfg.loggedIn(page).catch(() => false);
-    return { ok: true, loggedIn: li };
+    let email = "";
+    if (li && service !== "muse") email = await extractEmail(page).catch(() => "");
+    return { ok: true, loggedIn: li, email };
   } catch (e) {
     return { ok: false, loggedIn: false, reason: e.message };
   } finally {

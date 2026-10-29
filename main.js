@@ -59,10 +59,13 @@ let settings = Object.assign(
     tunnelEnabled: true,
     autoStart: false,
     museUrl: "",
+    museProxy: "",
+    adminToken: "",
     worker: { url: "", token: "", enabled: false },
   },
   readJson(SETTINGS_FILE, {})
 );
+if (!settings.adminToken) settings.adminToken = crypto.randomBytes(9).toString("hex");
 let members = readJson(MEMBERS_FILE, []); // [{id,name,key,created,lastUse}]
 let meta = readJson(META_FILE, {}); // { name: {service,proxy,lastStatus,lastCheck} }
 
@@ -75,6 +78,8 @@ function saveMembers() {
 function saveMeta() {
   writeJson(META_FILE, meta);
 }
+// Persist a freshly generated admin token so it stays stable across launches.
+saveSettings();
 
 // --- live log ring buffer -------------------------------------------------
 const logBuf = [];
@@ -100,6 +105,10 @@ function metaFor(name) {
 function startPoolSrv() {
   if (pool) return { ok: true, already: true };
   try {
+    let adminHtml = "";
+    try {
+      adminHtml = fs.readFileSync(path.join(__dirname, "admin.html"), "utf8");
+    } catch {}
     pool = startPool({
       port: settings.port,
       profilesBase: settings.profilesBase,
@@ -110,6 +119,16 @@ function startPoolSrv() {
       getKeys: () => members.map((m) => m.key),
       getMeta: (name) => metaFor(name),
       onEvent: (ev) => log(ev.line),
+      admin: {
+        token: () => settings.adminToken,
+        html: adminHtml,
+        api: {
+          status: () => ({ pool: pool ? pool.status() : null, members, profiles: listProfiles(), tunnelUrl }),
+          memberAdd: (name) => memberAdd(name),
+          memberRenew: (id) => memberRenew(id),
+          memberDelete: (id) => memberDelete(id),
+        },
+      },
     });
     log("pool started on :" + settings.port);
     return { ok: true };
@@ -207,6 +226,7 @@ function listProfiles() {
     const m = metaFor(n);
     return {
       name: n,
+      email: m.email || "",
       service: m.service || "gemini",
       proxy: m.proxy || null,
       state: stateOf(n),
@@ -321,16 +341,15 @@ ipcMain.handle("pool:stop", async () => {
 
 ipcMain.handle("log:get", () => logBuf.slice(-200));
 
-// members
-ipcMain.handle("members:list", () => members);
-ipcMain.handle("members:add", (e, name) => {
+// members — shared ops used by both the local UI (IPC) and the remote admin panel
+function memberAdd(name) {
   const m = { id: crypto.randomBytes(5).toString("hex"), name: String(name || "member").slice(0, 60), key: "key-" + crypto.randomBytes(16).toString("hex"), created: Date.now(), lastUse: 0 };
   members.push(m);
   saveMembers();
   log("member added: " + m.name);
   return m;
-});
-ipcMain.handle("members:renew", (e, id) => {
+}
+function memberRenew(id) {
   const m = members.find((x) => x.id === id);
   if (m) {
     m.key = "key-" + crypto.randomBytes(16).toString("hex");
@@ -338,8 +357,8 @@ ipcMain.handle("members:renew", (e, id) => {
     log("member key renewed: " + m.name);
   }
   return m || null;
-});
-ipcMain.handle("members:delete", (e, id) => {
+}
+function memberDelete(id) {
   const i = members.findIndex((x) => x.id === id);
   if (i >= 0) {
     log("member deleted: " + members[i].name);
@@ -347,7 +366,11 @@ ipcMain.handle("members:delete", (e, id) => {
     saveMembers();
   }
   return { ok: true };
-});
+}
+ipcMain.handle("members:list", () => members);
+ipcMain.handle("members:add", (e, name) => memberAdd(name));
+ipcMain.handle("members:renew", (e, id) => memberRenew(id));
+ipcMain.handle("members:delete", (e, id) => memberDelete(id));
 
 // profiles
 ipcMain.handle("profiles:list", () => listProfiles());
@@ -366,6 +389,7 @@ ipcMain.handle("profiles:add", async (e, { service }) => {
     const r = await login.interactiveLogin({ dir, service: svc, museUrl: settings.museUrl, onState: () => {} });
     meta[name].lastStatus = r.loggedIn ? "logged_in" : "needs_login";
     meta[name].lastCheck = Date.now();
+    if (r.email) meta[name].email = r.email;
     saveMeta();
     if (pool) pool.rescan();
     log("profile " + name + ": " + (r.loggedIn ? "logged in ✓" : "not confirmed (re-login if needed)"));
@@ -384,7 +408,7 @@ ipcMain.handle("profiles:relogin", async (e, name) => {
   log("re-login: " + name + " — Chrome khul raha hai…");
   try {
     const r = await login.interactiveLogin({ dir, service: m.service, museUrl: settings.museUrl, onState: () => {} });
-    meta[name] = Object.assign(metaFor(name), { lastStatus: r.loggedIn ? "logged_in" : "needs_login", lastCheck: Date.now() });
+    meta[name] = Object.assign(metaFor(name), { lastStatus: r.loggedIn ? "logged_in" : "needs_login", lastCheck: Date.now() }, r.email ? { email: r.email } : {});
     saveMeta();
     if (pool) pool.rescan();
     return { ok: true, loggedIn: r.loggedIn };
@@ -411,7 +435,7 @@ ipcMain.handle("profiles:check", async (e, name) => {
   const m = metaFor(name);
   const dir = path.join(settings.profilesBase, name);
   const r = await login.checkLoggedIn({ dir, service: m.service, museUrl: settings.museUrl, proxy: m.proxy });
-  meta[name] = Object.assign(metaFor(name), { lastStatus: r.loggedIn ? "logged_in" : "needs_login", lastCheck: Date.now() });
+  meta[name] = Object.assign(metaFor(name), { lastStatus: r.loggedIn ? "logged_in" : "needs_login", lastCheck: Date.now() }, r.email ? { email: r.email } : {});
   saveMeta();
   return r;
 });

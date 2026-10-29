@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Ultron Pool — Admin</title>
+    <style>
+      * { box-sizing: border-box; }
+      :root { --bg:#0b0f17; --panel:#131a27; --panel2:#0f1420; --line:#223049; --txt:#e6edf7; --muted:#8aa0bf; --accent:#4f8cff; --good:#3fd18b; --bad:#ff5d6c; --warn:#ffb020; --chip:#1b2740; }
+      body { margin:0; background:var(--bg); color:var(--txt); font:15px/1.5 "Segoe UI",system-ui,sans-serif; }
+      header { padding:14px 18px; background:var(--panel2); border-bottom:1px solid var(--line); display:flex; align-items:center; justify-content:space-between; }
+      .brand { font-weight:600; } .brand span{ color:var(--accent); }
+      main { padding:18px; max-width:900px; margin:0 auto; }
+      .card { background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:16px; margin-bottom:16px; }
+      .k { color:var(--muted); font-size:12px; text-transform:uppercase; letter-spacing:.04em; margin-bottom:10px; }
+      .cards { display:flex; gap:12px; flex-wrap:wrap; }
+      .stat { background:var(--panel2); border:1px solid var(--line); border-radius:10px; padding:10px 16px; min-width:90px; }
+      .stat .v { font-size:24px; font-weight:700; } .stat .l { color:var(--muted); font-size:12px; }
+      input { background:var(--panel2); border:1px solid var(--line); color:var(--txt); border-radius:8px; padding:9px 11px; font-size:14px; outline:none; }
+      input:focus { border-color:var(--accent); }
+      button { background:var(--chip); border:1px solid var(--line); color:var(--txt); padding:8px 13px; border-radius:8px; cursor:pointer; font-size:13px; }
+      button:hover { border-color:var(--accent); }
+      .primary { background:var(--accent); border-color:var(--accent); color:#fff; font-weight:600; }
+      .danger { background:#2a1620; color:var(--bad); }
+      table { width:100%; border-collapse:collapse; }
+      th { text-align:left; color:var(--muted); font-size:12px; padding:9px 10px; border-bottom:1px solid var(--line); }
+      td { padding:9px 10px; border-bottom:1px solid var(--line); }
+      tr:last-child td { border:none; }
+      code { background:var(--panel2); padding:3px 7px; border-radius:6px; font-size:12px; user-select:text; }
+      .url { display:flex; gap:8px; } .url input{ flex:1; }
+      .badge { font-size:12px; padding:3px 9px; border-radius:20px; }
+      .green{background:#11301f;color:var(--good);} .red{background:#331519;color:var(--bad);} .amber{background:#332611;color:var(--warn);} .gray{background:#1a2335;color:var(--muted);}
+      #gate { max-width:360px; margin:12vh auto; }
+      .row { display:flex; gap:8px; align-items:center; }
+      .hint{ color:var(--muted); font-size:12px; margin-top:8px; }
+      .hide { display:none; }
+      #toast{ position:fixed; bottom:18px; left:50%; transform:translateX(-50%); background:#1b2740; border:1px solid var(--line); padding:9px 16px; border-radius:10px; opacity:0; transition:.25s; }
+      #toast.show{ opacity:1; }
+    </style>
+  </head>
+  <body>
+    <header>
+      <div class="brand"><span>⚡</span> Ultron Pool — Admin</div>
+      <button id="logout" class="hide">Logout</button>
+    </header>
+
+    <div id="gate" class="card">
+      <div class="k">Admin login</div>
+      <div class="row"><input id="tok" type="password" placeholder="admin token" style="flex:1" /><button id="go" class="primary">Enter</button></div>
+      <div id="gateMsg" class="hint"></div>
+    </div>
+
+    <main id="app" class="hide">
+      <div class="card">
+        <div class="k">Pool status</div>
+        <div class="cards">
+          <div class="stat"><div class="v" id="sTotal">–</div><div class="l">Total</div></div>
+          <div class="stat"><div class="v" id="sFree">–</div><div class="l">Free</div></div>
+          <div class="stat"><div class="v" id="sLeased">–</div><div class="l">Leased</div></div>
+          <div class="stat"><div class="v" id="sBusy">–</div><div class="l">Busy</div></div>
+          <div class="stat"><div class="v" id="sLeases">–</div><div class="l">Leases</div></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="k">Public URL</div>
+        <div class="url"><input id="url" readonly /><button id="copyUrl">Copy</button></div>
+      </div>
+
+      <div class="card">
+        <div class="k">Members &amp; keys</div>
+        <div class="row" style="margin-bottom:12px"><input id="mName" placeholder="member name" style="flex:1" /><button id="addM" class="primary">+ Add</button></div>
+        <table><thead><tr><th>Name</th><th>Key</th><th>Actions</th></tr></thead><tbody id="mRows"></tbody></table>
+      </div>
+
+      <div class="card">
+        <div class="k">Profiles (status)</div>
+        <table><thead><tr><th>Profile</th><th>Service</th><th>Status</th><th>In use</th></tr></thead><tbody id="pRows"></tbody></table>
+        <div class="hint">Re-login / add profile office laptop pe (ya remote-desktop se) — sign-in wahीं hota hai.</div>
+      </div>
+    </main>
+
+    <div id="toast"></div>
+    <script>
+      const $ = (id) => document.getElementById(id);
+      let TOKEN = localStorage.getItem("ultron_admin_tok") || "";
+      function toast(m){ const t=$("toast"); t.textContent=m; t.classList.add("show"); clearTimeout(t._h); t._h=setTimeout(()=>t.classList.remove("show"),2000); }
+      async function apiGet(p){ const r=await fetch(p,{headers:{"x-admin-token":TOKEN}}); if(r.status===401) throw new Error("401"); return r.json(); }
+      async function apiPost(p,body){ const r=await fetch(p,{method:"POST",headers:{"x-admin-token":TOKEN,"Content-Type":"application/json"},body:JSON.stringify(body||{})}); if(r.status===401) throw new Error("401"); return r.json(); }
+
+      function showApp(){ $("gate").classList.add("hide"); $("app").classList.remove("hide"); $("logout").classList.remove("hide"); }
+      function showGate(msg){ $("app").classList.add("hide"); $("gate").classList.remove("hide"); $("logout").classList.add("hide"); if(msg)$("gateMsg").textContent=msg; }
+
+      $("go").onclick = async () => {
+        TOKEN = $("tok").value.trim();
+        try { await apiGet("/admin/api/status"); localStorage.setItem("ultron_admin_tok",TOKEN); showApp(); load(); }
+        catch(e){ $("gateMsg").textContent = "Galat token."; }
+      };
+      $("logout").onclick = () => { localStorage.removeItem("ultron_admin_tok"); TOKEN=""; showGate("Logged out."); };
+      $("copyUrl").onclick = () => { const v=$("url").value; if(v){ navigator.clipboard.writeText(v); toast("URL copied"); } };
+      $("addM").onclick = async () => { const n=$("mName").value.trim()||"member"; await apiPost("/admin/api/member",{name:n}); $("mName").value=""; toast("added"); load(); };
+
+      function pbadge(st,state){ if(state==="busy"||state==="leased")return '<span class="badge amber">🟡 '+state+'</span>'; if(st==="logged_in")return '<span class="badge green">🟢 ok</span>'; if(st==="needs_login")return '<span class="badge red">🔴 re-login</span>'; return '<span class="badge gray">⚪ unknown</span>'; }
+
+      async function load(){
+        let d;
+        try { d = await apiGet("/admin/api/status"); } catch(e){ showGate("Session khatam — dubara login."); return; }
+        const p=d.pool||{};
+        $("sTotal").textContent=p.total??"–"; $("sFree").textContent=p.free??"–"; $("sLeased").textContent=p.leased??"–"; $("sBusy").textContent=p.busy??"–"; $("sLeases").textContent=p.activeLeases??"–";
+        $("url").value = d.tunnelUrl || "(tunnel starting…)";
+        const mb=$("mRows"); mb.innerHTML="";
+        (d.members||[]).forEach(m=>{ const tr=document.createElement("tr"); tr.innerHTML='<td><b>'+m.name+'</b></td><td><code>'+m.key+'</code></td><td class="row"><button data-c="'+m.id+'">Copy</button> <button data-r="'+m.id+'">Renew</button> <button class="danger" data-d="'+m.id+'">Delete</button></td>'; mb.appendChild(tr); });
+        mb.querySelectorAll("button[data-c]").forEach(b=>b.onclick=()=>{const m=(d.members||[]).find(x=>x.id===b.dataset.c); if(m){navigator.clipboard.writeText(m.key);toast("key copied");}});
+        mb.querySelectorAll("button[data-r]").forEach(b=>b.onclick=async()=>{ if(confirm("Renew key? Purani band ho jayegi.")){ await apiPost("/admin/api/member/renew",{id:b.dataset.r}); toast("renewed"); load(); }});
+        mb.querySelectorAll("button[data-d]").forEach(b=>b.onclick=async()=>{ if(confirm("Delete member? Key band ho jayegi.")){ await apiPost("/admin/api/member/delete",{id:b.dataset.d}); toast("deleted"); load(); }});
+        const pb=$("pRows"); pb.innerHTML="";
+        (d.profiles||[]).forEach(pr=>{ const tr=document.createElement("tr"); const busy=(pr.state==="busy"||pr.state==="leased"); const em=pr.email?('<br><span style="color:var(--muted);font-size:12px">'+pr.email+'</span>'):''; tr.innerHTML='<td><b>'+pr.name+'</b>'+em+'</td><td>'+pr.service+'</td><td>'+pbadge(pr.lastStatus,pr.state)+'</td><td>'+(busy?pr.state:"—")+'</td>'; pb.appendChild(tr); });
+      }
+
+      if (TOKEN) { apiGet("/admin/api/status").then(()=>{ showApp(); load(); }).catch(()=>showGate()); } else showGate();
+      setInterval(()=>{ if(!$("app").classList.contains("hide")) load(); }, 4000);
+    </script>
+  </body>
+</html>
