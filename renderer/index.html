@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Ultron Pool Manager</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <div class="brand"><span class="logo">⚡</span> Ultron Pool Manager</div>
+      <div class="top-status">
+        <span id="poolDot" class="dot off"></span>
+        <span id="poolText">stopped</span>
+        <button id="togglePool" class="btn btn-primary">Start</button>
+      </div>
+    </header>
+
+    <nav class="tabs">
+      <button class="tab active" data-tab="dashboard">Dashboard</button>
+      <button class="tab" data-tab="profiles">Profiles</button>
+      <button class="tab" data-tab="members">Members</button>
+      <button class="tab" data-tab="settings">Settings</button>
+    </nav>
+
+    <main>
+      <!-- DASHBOARD -->
+      <section id="dashboard" class="page active">
+        <div class="cards">
+          <div class="card"><div class="k">Total</div><div id="cTotal" class="v">–</div></div>
+          <div class="card"><div class="k">Free</div><div id="cFree" class="v good">–</div></div>
+          <div class="card"><div class="k">Leased</div><div id="cLeased" class="v">–</div></div>
+          <div class="card"><div class="k">Busy</div><div id="cBusy" class="v">–</div></div>
+          <div class="card"><div class="k">Leases</div><div id="cLeases" class="v">–</div></div>
+        </div>
+
+        <div class="urlbox">
+          <div class="k">Public URL (members connect here)</div>
+          <div class="urlrow">
+            <input id="urlField" readonly placeholder="tunnel starting…" />
+            <button id="copyUrl" class="btn">Copy</button>
+            <button id="openUrl" class="btn">Open</button>
+          </div>
+          <div id="urlHint" class="hint"></div>
+        </div>
+
+        <div class="logbox">
+          <div class="k">Live log</div>
+          <pre id="log"></pre>
+        </div>
+      </section>
+
+      <!-- PROFILES -->
+      <section id="profiles" class="page">
+        <div class="rowbar">
+          <div class="k">AI Profiles</div>
+          <div class="spacer"></div>
+          <button id="addGemini" class="btn btn-primary">+ Add Gemini</button>
+          <button id="addMuse" class="btn">+ Add Muse</button>
+          <button id="checkAll" class="btn">Check status</button>
+        </div>
+        <table class="tbl">
+          <thead>
+            <tr><th>Profile</th><th>Service</th><th>Status</th><th>In use</th><th>Actions</th></tr>
+          </thead>
+          <tbody id="profRows"></tbody>
+        </table>
+        <div id="profEmpty" class="empty">Koi profile nahi. "+ Add Gemini" se shuru karo.</div>
+      </section>
+
+      <!-- MEMBERS -->
+      <section id="members" class="page">
+        <div class="rowbar">
+          <div class="k">Members &amp; Keys</div>
+          <div class="spacer"></div>
+          <input id="memberName" class="inp" placeholder="member name (e.g. asad)" />
+          <button id="addMember" class="btn btn-primary">+ Add member</button>
+        </div>
+        <table class="tbl">
+          <thead>
+            <tr><th>Name</th><th>API Key</th><th>Created</th><th>Actions</th></tr>
+          </thead>
+          <tbody id="memRows"></tbody>
+        </table>
+        <div id="memEmpty" class="empty">Abhi koi member nahi. Upar se add karo — har ek ko ek key milegi.</div>
+      </section>
+
+      <!-- SETTINGS -->
+      <section id="settings" class="page">
+        <div class="k">Settings</div>
+        <div class="form">
+          <label>Port <input id="sPort" type="number" class="inp" /></label>
+          <label>Lease size (max profiles per member) <input id="sLease" type="number" class="inp" /></label>
+          <label>Lease timeout (minutes) <input id="sTtl" type="number" class="inp" /></label>
+          <label>Muse site URL (for Muse login) <input id="sMuseUrl" class="inp" placeholder="https://…" /></label>
+          <label>Muse proxy (socks5://…) <input id="sMuseProxy" class="inp" placeholder="optional — Oracle VPS" /></label>
+          <label class="chk"><input id="sTunnel" type="checkbox" /> Internet tunnel on</label>
+          <label class="chk"><input id="sAutoStart" type="checkbox" /> Start with Windows</label>
+          <hr />
+          <div class="k2">Stable URL (optional) — push tunnel URL to your Ultron worker</div>
+          <label class="chk"><input id="sWorkerEnabled" type="checkbox" /> Enable worker URL push</label>
+          <label>Worker URL <input id="sWorkerUrl" class="inp" placeholder="https://…workers.dev" /></label>
+          <label>Admin token <input id="sWorkerToken" class="inp" type="password" placeholder="secret" /></label>
+          <div><button id="saveSettings" class="btn btn-primary">Save settings</button> <span id="saveMsg" class="hint"></span></div>
+          <div id="pwWarn" class="warn" style="display:none">⚠️ playwright-core nahi mila — profiles login nahi chalega. App folder mein <code>npm install</code> chalao.</div>
+        </div>
+      </section>
+    </main>
+
+    <div id="toast" class="toast"></div>
+    <script src="renderer.js"></script>
+  </body>
+</html>

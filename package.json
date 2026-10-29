@@ -1,0 +1,65 @@
+{
+  "name": "ultron-pool-manager",
+  "version": "1.0.0",
+  "description": "Ultron Pool Manager — central Gemini/Muse profile-lease pool with a GUI (profiles, member keys, tunnel).",
+  "main": "main.js",
+  "author": "Ultron",
+  "license": "UNLICENSED",
+  "private": true,
+  "scripts": {
+    "start": "electron .",
+    "dist": "electron-builder --win nsis"
+  },
+  "dependencies": {
+    "electron-updater": "^6.8.11",
+    "playwright-core": "^1.47.0"
+  },
+  "devDependencies": {
+    "electron": "^33.2.0",
+    "electron-builder": "^25.1.8"
+  },
+  "build": {
+    "appId": "com.ultron.poolmanager",
+    "productName": "Ultron Pool Manager",
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "uiux40441-creator",
+        "repo": "ultron-pool-manager"
+      }
+    ],
+    "files": [
+      "main.js",
+      "preload.js",
+      "pool-core.js",
+      "login.js",
+      "tunnel.js",
+      "ultron-gemini-pool.js",
+      "renderer/**"
+    ],
+    "extraResources": [
+      {
+        "from": "bin/cloudflared.exe",
+        "to": "cloudflared.exe"
+      }
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "artifactName": "Ultron-Pool-Manager-Setup-${version}.exe"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "shortcutName": "Ultron Pool Manager"
+    }
+  }
+}
