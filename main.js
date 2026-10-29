@@ -310,6 +310,10 @@ app.whenReady().then(() => {
   startPoolSrv();
   startTun();
   setupAutoUpdate();
+  // Keep the worker's pool URL fresh (self-heals if a push was missed).
+  setInterval(() => {
+    if (settings.worker && settings.worker.enabled && tunnelUrl) pushUrlToWorker(tunnelUrl);
+  }, 5 * 60 * 1000);
   app.on("activate", () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();
   });
@@ -324,6 +328,7 @@ app.on("window-all-closed", async () => {
 // ======================= IPC =======================
 ipcMain.handle("status", () => ({
   poolRunning: !!pool,
+  version: app.getVersion(),
   tunnelUrl,
   tunnelEnabled: !!settings.tunnelEnabled,
   port: settings.port,
@@ -459,6 +464,9 @@ ipcMain.handle("settings:set", async (e, patch) => {
     startPoolSrv();
     startTun();
   }
+  // Push the current URL right away so enabling/changing worker settings takes
+  // effect without needing a tunnel restart.
+  if (settings.worker && settings.worker.enabled && tunnelUrl) pushUrlToWorker(tunnelUrl);
   return settings;
 });
 

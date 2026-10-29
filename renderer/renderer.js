@@ -35,6 +35,7 @@ async function refreshStatus() {
   const s = await api.status();
   running = s.poolRunning;
   lastTunnelUrl = s.tunnelUrl || "";
+  if (s.version) $("verTag").textContent = "v" + s.version;
   $("poolDot").className = "dot " + (running ? "on" : "off");
   $("poolText").textContent = running ? "running on :" + s.port : "stopped";
   $("togglePool").textContent = running ? "Stop" : "Start";
@@ -249,8 +250,8 @@ $("openManageUrl").onclick = () => { const v = $("manageUrl").value; if (v && v.
 $("copyAdminUrl").onclick = () => { const v = $("adminUrl").value; if (v && v.startsWith("http")) { navigator.clipboard.writeText(v); toast("admin URL copied"); } };
 $("openAdminUrl").onclick = () => { const v = $("adminUrl").value; if (v && v.startsWith("http")) api.openExternal(v); };
 $("copyAdminTok").onclick = () => { const v = $("adminTok").textContent; if (v && v !== "–") { navigator.clipboard.writeText(v); toast("token copied"); } };
-$("saveSettings").onclick = async () => {
-  const patch = {
+function collectSettings() {
+  return {
     port: Number($("sPort").value) || 8787,
     leaseMax: Number($("sLease").value) || 6,
     leaseTtlMs: (Number($("sTtl").value) || 10) * 60000,
@@ -260,11 +261,23 @@ $("saveSettings").onclick = async () => {
     autoStart: $("sAutoStart").checked,
     worker: { enabled: $("sWorkerEnabled").checked, url: $("sWorkerUrl").value.trim(), token: $("sWorkerToken").value.trim() },
   };
-  await api.settingsSet(patch);
-  $("saveMsg").textContent = "saved ✓ (port change par pool restart)";
-  toast("settings saved");
+}
+async function saveSettingsNow(quiet) {
+  await api.settingsSet(collectSettings());
+  if (!quiet) {
+    $("saveMsg").textContent = "saved ✓";
+    toast("settings saved");
+  }
   refreshStatus();
-};
+}
+$("saveSettings").onclick = () => saveSettingsNow(false);
+// Checkboxes save immediately (no need to click Save) so they persist on restart.
+["sTunnel", "sAutoStart", "sWorkerEnabled"].forEach((id) => {
+  $(id).addEventListener("change", () => {
+    saveSettingsNow(true);
+    toast("saved ✓");
+  });
+});
 
 // ---- boot ----
 (async function () {
