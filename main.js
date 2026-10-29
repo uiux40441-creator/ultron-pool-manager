@@ -187,7 +187,7 @@ function pushUrlToWorker(url) {
   if (!w.enabled || !w.url || !w.token) return;
   try {
     const u = new URL(w.url.replace(/\/$/, "") + "/pool-url");
-    const data = JSON.stringify({ url });
+    const data = JSON.stringify({ url, poolToken: settings.adminToken });
     const lib = u.protocol === "http:" ? http : https;
     const req = lib.request(
       u,

@@ -104,10 +104,12 @@
           <hr />
           <div class="k2">Remote admin — manage members/status from any browser (office ke bahar se)</div>
           <div class="adminbox">
-            <div class="hint">Admin panel URL (kahin se bhi kholo):</div>
-            <div class="row2"><input id="adminUrl" class="inp" readonly style="flex:1" /><button id="copyAdminUrl" class="btn">Copy</button><button id="openAdminUrl" class="btn">Open</button></div>
-            <div class="hint" style="margin-top:10px">Admin token (password — ye daal ke login karna):</div>
+            <div class="hint"><b>⭐ Permanent manage link</b> — ise phone/laptop pe bookmark karo. Kahin se bhi kholo → admin token daalo (ek baar) → manage. URL kabhi nahi badlega.</div>
+            <div class="row2"><input id="manageUrl" class="inp" readonly style="flex:1" /><button id="copyManageUrl" class="btn">Copy</button><button id="openManageUrl" class="btn">Open</button></div>
+            <div class="hint" style="margin-top:12px">Admin token (is link pe ye daalna — tumhari Ultron-Admin-Info.txt wala):</div>
             <div class="row2"><code id="adminTok">–</code><button id="copyAdminTok" class="btn">Copy token</button></div>
+            <div class="hint" style="margin-top:12px">Ya seedha pool ka admin URL (badalta rehta hai):</div>
+            <div class="row2"><input id="adminUrl" class="inp" readonly style="flex:1" /><button id="copyAdminUrl" class="btn">Copy</button><button id="openAdminUrl" class="btn">Open</button></div>
           </div>
           <div style="margin-top:12px"><button id="saveSettings" class="btn btn-primary">Save settings</button> <span id="saveMsg" class="hint"></span></div>
           <div id="pwWarn" class="warn" style="display:none">⚠️ playwright-core nahi mila — profiles login nahi chalega. App folder mein <code>npm install</code> chalao.</div>

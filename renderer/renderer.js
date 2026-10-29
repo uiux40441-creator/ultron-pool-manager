@@ -241,7 +241,11 @@ async function loadSettings() {
   $("sWorkerToken").value = w.token || "";
   $("adminTok").textContent = s.adminToken || "–";
   $("adminUrl").value = lastTunnelUrl ? lastTunnelUrl + "/admin" : "(tunnel starting… — Dashboard dekho)";
+  const wu = (s.worker && s.worker.url ? s.worker.url : "").replace(/\/$/, "");
+  $("manageUrl").value = wu ? wu + "/manage" : "(worker URL Settings mein daalo)";
 }
+$("copyManageUrl").onclick = () => { const v = $("manageUrl").value; if (v && v.startsWith("http")) { navigator.clipboard.writeText(v); toast("manage link copied"); } };
+$("openManageUrl").onclick = () => { const v = $("manageUrl").value; if (v && v.startsWith("http")) api.openExternal(v); };
 $("copyAdminUrl").onclick = () => { const v = $("adminUrl").value; if (v && v.startsWith("http")) { navigator.clipboard.writeText(v); toast("admin URL copied"); } };
 $("openAdminUrl").onclick = () => { const v = $("adminUrl").value; if (v && v.startsWith("http")) api.openExternal(v); };
 $("copyAdminTok").onclick = () => { const v = $("adminTok").textContent; if (v && v !== "–") { navigator.clipboard.writeText(v); toast("token copied"); } };
