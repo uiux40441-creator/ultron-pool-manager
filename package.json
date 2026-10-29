@@ -1,6 +1,6 @@
 {
   "name": "ultron-pool-manager",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "Ultron Pool Manager — central Gemini/Muse profile-lease pool with a GUI (profiles, member keys, tunnel).",
   "main": "main.js",
   "author": "Ultron",

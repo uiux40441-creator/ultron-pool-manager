@@ -55,6 +55,7 @@ async function refreshStatus() {
 }
 
 $("togglePool").onclick = async () => {
+  if (running && !confirm("Pool band karni hai? Members abhi disconnect ho jayenge.")) return;
   $("togglePool").disabled = true;
   if (running) await api.poolStop();
   else await api.poolStart();

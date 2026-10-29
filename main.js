@@ -61,7 +61,10 @@ let settings = Object.assign(
     museUrl: "",
     museProxy: "",
     adminToken: "",
-    worker: { url: "", token: "", enabled: false },
+    // Stable-URL discovery: push the live tunnel URL to the Ultron worker so
+    // Ultron clients fetch it and members only ever need a key. Paste the admin
+    // token once in Settings to enable the push (URL is pre-filled).
+    worker: { url: "https://ultron-license.tehseen-ultron.workers.dev", token: "", enabled: true },
   },
   readJson(SETTINGS_FILE, {})
 );
