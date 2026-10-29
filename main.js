@@ -82,6 +82,9 @@ function log(line) {
   const entry = { t: Date.now(), line: String(line) };
   logBuf.push(entry);
   if (logBuf.length > 400) logBuf.shift();
+  try {
+    process.stdout.write("[pm] " + entry.line + "\n");
+  } catch {}
   if (win && !win.isDestroyed()) win.webContents.send("log", entry);
 }
 
@@ -226,6 +229,26 @@ function createWindow() {
     webPreferences: { preload: path.join(__dirname, "preload.js"), contextIsolation: true, nodeIntegration: false },
   });
   win.setMenuBarVisibility(false);
+  win.webContents.on("console-message", (e, level, message, lineNo, src) => {
+    try {
+      process.stdout.write(`[renderer:${lineNo}] ${message}\n`);
+    } catch {}
+  });
+  win.webContents.on("preload-error", (e, pth, err) => {
+    try {
+      process.stdout.write(`[preload-error] ${pth} :: ${err && err.message}\n`);
+    } catch {}
+  });
+  win.webContents.on("render-process-gone", (e, d) => {
+    try {
+      process.stdout.write(`[render-gone] ${JSON.stringify(d)}\n`);
+    } catch {}
+  });
+  win.webContents.on("did-fail-load", (e, code, desc, url) => {
+    try {
+      process.stdout.write(`[did-fail-load] ${code} ${desc} ${url}\n`);
+    } catch {}
+  });
   win.loadFile(path.join(__dirname, "renderer", "index.html"));
 }
 

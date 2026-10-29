@@ -1,6 +1,6 @@
 "use strict";
 const $ = (id) => document.getElementById(id);
-const pm = window.pm;
+const api = window.pm;
 
 function toast(msg) {
   const t = $("toast");
@@ -31,7 +31,7 @@ document.querySelectorAll(".tab").forEach((t) => {
 // ---- dashboard status ----
 let running = false;
 async function refreshStatus() {
-  const s = await pm.status();
+  const s = await api.status();
   running = s.poolRunning;
   $("poolDot").className = "dot " + (running ? "on" : "off");
   $("poolText").textContent = running ? "running on :" + s.port : "stopped";
@@ -54,8 +54,8 @@ async function refreshStatus() {
 
 $("togglePool").onclick = async () => {
   $("togglePool").disabled = true;
-  if (running) await pm.poolStop();
-  else await pm.poolStart();
+  if (running) await api.poolStop();
+  else await api.poolStart();
   await refreshStatus();
   $("togglePool").disabled = false;
 };
@@ -68,7 +68,7 @@ $("copyUrl").onclick = () => {
 };
 $("openUrl").onclick = () => {
   const v = $("urlField").value;
-  if (v) pm.openExternal(v + "/pool/status");
+  if (v) api.openExternal(v + "/pool/status");
 };
 
 // ---- live log ----
@@ -78,11 +78,11 @@ function appendLog(entry) {
   el.textContent += `${ts}  ${entry.line}\n`;
   el.scrollTop = el.scrollHeight;
 }
-pm.onLog(appendLog);
-pm.onTunnel(() => refreshStatus());
+api.onLog(appendLog);
+api.onTunnel(() => refreshStatus());
 
 // ---- auto-update banner ----
-pm.onUpdate((d) => {
+api.onUpdate((d) => {
   if (d.stage === "ready") {
     let bar = $("updateBar");
     if (!bar) {
@@ -92,7 +92,7 @@ pm.onUpdate((d) => {
       document.body.appendChild(bar);
     }
     bar.innerHTML = `Update v${d.version} ready. <button id="doUpdate" class="btn" style="background:#fff;color:#1f6feb;font-weight:600">Restart & update</button>`;
-    $("doUpdate").onclick = () => pm.updateInstall();
+    $("doUpdate").onclick = () => api.updateInstall();
   } else if (d.stage === "progress") {
     toast("Updating… " + d.percent + "%");
   }
@@ -106,7 +106,7 @@ function badge(status, state) {
   return `<span class="badge gray">⚪ unknown</span>`;
 }
 async function loadProfiles() {
-  const rows = await pm.profilesList();
+  const rows = await api.profilesList();
   const tb = $("profRows");
   tb.innerHTML = "";
   $("profEmpty").style.display = rows.length ? "none" : "block";
@@ -132,18 +132,18 @@ async function loadProfiles() {
 async function profileAction(act, name, btn) {
   if (act === "del") {
     if (!confirm(`Delete profile "${name}"? (dubara login karna padega)`)) return;
-    const r = await pm.profileDelete(name);
+    const r = await api.profileDelete(name);
     toast(r.ok ? "deleted" : r.error);
     loadProfiles();
   } else if (act === "relogin") {
     toast("Chrome khul raha hai — sign in karein…");
-    const r = await pm.profileRelogin(name);
+    const r = await api.profileRelogin(name);
     toast(r.ok ? (r.loggedIn ? "logged in ✓" : "band ho gaya — check karo") : r.error);
     loadProfiles();
   } else if (act === "check") {
     btn.disabled = true;
     btn.textContent = "…";
-    await pm.profileCheck(name);
+    await api.profileCheck(name);
     btn.disabled = false;
     btn.textContent = "Check";
     loadProfiles();
@@ -151,29 +151,29 @@ async function profileAction(act, name, btn) {
 }
 $("addGemini").onclick = async () => {
   toast("Chrome khul raha hai — Gemini me sign in karein…");
-  const r = await pm.profileAdd("gemini");
+  const r = await api.profileAdd("gemini");
   toast(r.ok ? "profile added: " + r.name : r.error);
   loadProfiles();
   refreshStatus();
 };
 $("addMuse").onclick = async () => {
   toast("Chrome khul raha hai — Muse me sign in karein…");
-  const r = await pm.profileAdd("muse");
+  const r = await api.profileAdd("muse");
   toast(r.ok ? "profile added: " + r.name : r.error);
   loadProfiles();
   refreshStatus();
 };
 $("checkAll").onclick = async () => {
-  const rows = await pm.profilesList();
+  const rows = await api.profilesList();
   toast("Checking " + rows.length + " profiles…");
-  for (const p of rows) await pm.profileCheck(p.name);
+  for (const p of rows) await api.profileCheck(p.name);
   loadProfiles();
   toast("status updated");
 };
 
 // ---- members ----
 async function loadMembers() {
-  const rows = await pm.membersList();
+  const rows = await api.membersList();
   const tb = $("memRows");
   tb.innerHTML = "";
   $("memEmpty").style.display = rows.length ? "none" : "block";
@@ -195,7 +195,7 @@ async function loadMembers() {
   });
 }
 async function memberAction(act, id) {
-  const rows = await pm.membersList();
+  const rows = await api.membersList();
   const m = rows.find((x) => x.id === id);
   if (act === "copy") {
     if (m) {
@@ -204,19 +204,19 @@ async function memberAction(act, id) {
     }
   } else if (act === "renew") {
     if (!confirm(`Renew ${m ? m.name : ""}? Purani key band ho jayegi.`)) return;
-    await pm.memberRenew(id);
+    await api.memberRenew(id);
     toast("key renewed");
     loadMembers();
   } else if (act === "del") {
     if (!confirm(`Delete member ${m ? m.name : ""}? Uski key band ho jayegi.`)) return;
-    await pm.memberDelete(id);
+    await api.memberDelete(id);
     toast("deleted");
     loadMembers();
   }
 }
 $("addMember").onclick = async () => {
   const name = $("memberName").value.trim() || "member";
-  await pm.memberAdd(name);
+  await api.memberAdd(name);
   $("memberName").value = "";
   loadMembers();
   toast("member added");
@@ -224,7 +224,7 @@ $("addMember").onclick = async () => {
 
 // ---- settings ----
 async function loadSettings() {
-  const s = await pm.settingsGet();
+  const s = await api.settingsGet();
   $("sPort").value = s.port;
   $("sLease").value = s.leaseMax;
   $("sTtl").value = Math.round(s.leaseTtlMs / 60000);
@@ -248,7 +248,7 @@ $("saveSettings").onclick = async () => {
     autoStart: $("sAutoStart").checked,
     worker: { enabled: $("sWorkerEnabled").checked, url: $("sWorkerUrl").value.trim(), token: $("sWorkerToken").value.trim() },
   };
-  await pm.settingsSet(patch);
+  await api.settingsSet(patch);
   $("saveMsg").textContent = "saved ✓ (port change par pool restart)";
   toast("settings saved");
   refreshStatus();
@@ -256,7 +256,8 @@ $("saveSettings").onclick = async () => {
 
 // ---- boot ----
 (async function () {
-  (await pm.logGet()).forEach(appendLog);
+  console.log("PM renderer booted ok; api=" + (api ? "present" : "MISSING"));
+  (await api.logGet()).forEach(appendLog);
   await refreshStatus();
   setInterval(refreshStatus, 3000);
 })();
